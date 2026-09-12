@@ -1,0 +1,28 @@
+from google import genai
+from google.genai import types as genai_types
+
+from core.config import settings
+
+
+class GeminiClient:
+    def __init__(self):
+        self._client = genai.Client(api_key=settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None
+
+    @property
+    def is_configured(self) -> bool:
+        return self._client is not None
+
+    def generate(self, contents: str, system_instruction: str) -> str:
+        response = self._client.models.generate_content(
+            model=settings.MODEL_NAME,
+            contents=contents,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.3,
+                max_output_tokens=1024,
+            ),
+        )
+        return response.text or ""
+
+
+gemini_client = GeminiClient()

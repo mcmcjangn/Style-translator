@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-
-<App className="css"></App>
-const API_BASE = 'http://localhost:8000'
+import { fetchStyles } from './api/client'
+import { useTranslate } from './hooks/useTranslate'
 
 const FALLBACK_STYLES = {
   general: '일반체',
@@ -22,43 +21,11 @@ export default function App() {
   const [text, setText] = useState('')
   const [targetLang, setTargetLang] = useState('en')
   const [style, setStyle] = useState('general')
-  const [result, setResult] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const { result, loading, error, translate } = useTranslate()
 
   useEffect(() => {
-    fetch(`${API_BASE}/styles`)
-      .then((res) => res.json())
-      .then(setStyles)
-      .catch(() => {})
+    fetchStyles().then(setStyles).catch(() => {})
   }, [])
-
-  async function handleTranslate() {
-    if (!text.trim()) {
-      setError('번역할 문장을 입력해 주세요.')
-      return
-    }
-    setLoading(true)
-    setError('')
-    setResult('')
-    try {
-      const res = await fetch(`${API_BASE}/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, target_lang: targetLang, style }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.detail || '번역 요청이 실패했습니다.')
-      }
-      const data = await res.json()
-      setResult(data.translated)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="page">
@@ -82,9 +49,7 @@ export default function App() {
             <label htmlFor="lang">언어</label>
             <select id="lang" value={targetLang} onChange={(e) => setTargetLang(e.target.value)}>
               {LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.label}
-                </option>
+                <option key={lang.code} value={lang.code}>{lang.label}</option>
               ))}
             </select>
           </div>
@@ -93,14 +58,16 @@ export default function App() {
             <label htmlFor="style">스타일</label>
             <select id="style" value={style} onChange={(e) => setStyle(e.target.value)}>
               {Object.entries(styles).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
+                <option key={key} value={key}>{label}</option>
               ))}
             </select>
           </div>
 
-          <button className="translate-btn" onClick={handleTranslate} disabled={loading}>
+          <button
+            className="translate-btn"
+            onClick={() => translate({ text, targetLang, style })}
+            disabled={loading}
+          >
             {loading ? '변환 중…' : '변환하기'}
           </button>
         </div>
