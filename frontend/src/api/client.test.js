@@ -9,12 +9,12 @@ function mockFetch(response) {
   return spy
 }
 
-function ok(body) {
-  return { ok: true, json: async () => body }
+function ok(data) {
+  return { ok: true, json: async () => ({ success: true, data }) }
 }
 
-function fail(body) {
-  return { ok: false, json: async () => body }
+function fail(error) {
+  return { ok: false, json: async () => ({ success: false, error }) }
 }
 
 afterEach(() => {
@@ -22,7 +22,7 @@ afterEach(() => {
 })
 
 describe('fetchStyles', () => {
-  it('성공 시 스타일 맵을 그대로 반환한다', async () => {
+  it('성공 시 스타일 맵을 반환한다 ({success, data} 언랩)', async () => {
     const styles = { general: '일반체', sns: 'SNS체' }
     const spy = mockFetch(ok(styles))
 
@@ -31,7 +31,7 @@ describe('fetchStyles', () => {
   })
 
   it('실패 시 에러를 던진다', async () => {
-    mockFetch(fail({}))
+    mockFetch(fail(undefined))
 
     await expect(fetchStyles()).rejects.toThrow('스타일 목록을 불러오지 못했습니다.')
   })
@@ -54,7 +54,7 @@ describe('fetchTranslation', () => {
     })
   })
 
-  it('성공 시 응답 본문을 반환한다', async () => {
+  it('성공 시 data 필드를 언랩해서 반환한다', async () => {
     mockFetch(ok({ translated: '결과', style: 'general' }))
 
     await expect(
@@ -62,18 +62,18 @@ describe('fetchTranslation', () => {
     ).resolves.toEqual({ translated: '결과', style: 'general' })
   })
 
-  // 백엔드 에러 응답 형식({"detail": ...})에 의존하는 테스트.
-  // 공통 예외처리 리팩토링 시 client.js와 함께 여기도 수정해야 합니다.
-  it('실패 시 백엔드의 detail 메시지를 에러로 던진다', async () => {
-    mockFetch(fail({ detail: '알 수 없는 스타일: xxx' }))
+  // 백엔드 공통 error envelope({ success: false, error: { code, message } })에 의존하는 테스트.
+  // 형식이 또 바뀌면 client.js의 unwrap()과 함께 여기도 수정해야 합니다.
+  it('실패 시 error.message를 에러로 던지고 error.code를 실어 보낸다', async () => {
+    mockFetch(fail({ code: 'UNKNOWN_STYLE', message: '알 수 없는 스타일: xxx' }))
 
     await expect(
       fetchTranslation({ text: '안녕', targetLang: '한국어', style: 'xxx' }),
-    ).rejects.toThrow('알 수 없는 스타일: xxx')
+    ).rejects.toMatchObject({ message: '알 수 없는 스타일: xxx', code: 'UNKNOWN_STYLE' })
   })
 
-  it('detail이 없으면 기본 메시지로 대체한다', async () => {
-    mockFetch(fail({}))
+  it('error 필드가 없으면 기본 메시지로 대체한다', async () => {
+    mockFetch(fail(undefined))
 
     await expect(
       fetchTranslation({ text: '안녕', targetLang: '한국어', style: 'general' }),
