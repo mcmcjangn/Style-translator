@@ -2,6 +2,6 @@ backend/venv/
 **/__pycache__/
 *.pyc
 backend/.env
-frontend/node_modules/
+node_modules/
 frontend/dist/
 .DS_Store
