@@ -7,18 +7,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.routes import get_translate_service
-from core.rate_limit import rate_limiter
 from main import app
 from services.translate import TranslateService
 
 DEFAULT_REPLY = "번역된 결과입니다."
-
-
-@pytest.fixture(autouse=True)
-def _reset_rate_limiter():
-    """레이트 리미터는 프로세스 전역 싱글톤이라 테스트 간 상태가 새는 것을 막습니다."""
-    rate_limiter.reset()
-    yield
 
 
 def error_message(response) -> str:

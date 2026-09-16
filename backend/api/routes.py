@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 
 from clients.gemini import gemini_client
 from core.envelope import SuccessResponse
-from core.rate_limit import enforce_rate_limit
 from models.schemas import HealthData, TranslateRequest, TranslateResponse
 from services.translate import TranslateService
 
@@ -24,11 +23,7 @@ def list_styles(service: TranslateService = Depends(get_translate_service)):
     return SuccessResponse(data=service.list_styles())
 
 
-@router.post(
-    "/translate",
-    response_model=SuccessResponse[TranslateResponse],
-    dependencies=[Depends(enforce_rate_limit)],
-)
+@router.post("/translate", response_model=SuccessResponse[TranslateResponse])
 def translate(req: TranslateRequest, service: TranslateService = Depends(get_translate_service)):
     translated = service.translate(req.text, req.target_lang, req.style)
     data = TranslateResponse(translated=translated, style=req.style)
