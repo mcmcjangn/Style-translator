@@ -7,7 +7,7 @@
 import pytest
 from google.genai import errors as genai_errors
 
-from conftest import DEFAULT_REPLY, error_message
+from conftest import DEFAULT_REPLY, error_code, error_message, success_data
 from styles import STYLES
 
 
@@ -24,7 +24,7 @@ def test_translate_returns_translated_text(client):
     res = client.post("/translate", json=payload())
 
     assert res.status_code == 200
-    assert res.json() == {"translated": DEFAULT_REPLY, "style": "general"}
+    assert success_data(res) == {"translated": DEFAULT_REPLY, "style": "general"}
 
 
 @pytest.mark.parametrize("style", sorted(STYLES))
@@ -33,13 +33,14 @@ def test_translate_accepts_every_defined_style(client, style):
     res = client.post("/translate", json=payload(style=style))
 
     assert res.status_code == 200
-    assert res.json()["style"] == style
+    assert success_data(res)["style"] == style
 
 
 def test_translate_strips_whitespace_from_model_output(make_client):
     test_client, _ = make_client(reply="  앞뒤 공백 있는 응답  \n")
 
-    assert test_client.post("/translate", json=payload()).json()["translated"] == "앞뒤 공백 있는 응답"
+    res = test_client.post("/translate", json=payload())
+    assert success_data(res)["translated"] == "앞뒤 공백 있는 응답"
 
 
 def test_translate_passes_text_and_style_prompt_to_client(client, fake_client):
@@ -63,6 +64,7 @@ def test_translate_rejects_unknown_style(client):
 
     assert res.status_code == 400
     assert "존재하지_않는_스타일" in error_message(res)
+    assert error_code(res) == "UNKNOWN_STYLE"
 
 
 def test_translate_rejects_empty_text(client):
@@ -70,6 +72,7 @@ def test_translate_rejects_empty_text(client):
 
     assert res.status_code == 400
     assert "비어" in error_message(res)
+    assert error_code(res) == "EMPTY_TEXT"
 
 
 def test_translate_rejects_whitespace_only_text(client):
@@ -93,6 +96,7 @@ def test_translate_fails_when_api_key_missing(make_client):
 
     assert res.status_code == 500
     assert "GEMINI_API_KEY" in error_message(res)
+    assert error_code(res) == "API_KEY_NOT_CONFIGURED"
 
 
 def test_translate_returns_502_when_gemini_fails(make_client):
@@ -108,6 +112,24 @@ def test_translate_returns_502_when_gemini_fails(make_client):
 
     assert res.status_code == 502
     assert "번역 엔진" in error_message(res)
+    assert error_code(res) == "TRANSLATION_ENGINE_ERROR"
+
+
+def test_translate_returns_500_with_generic_message_on_unexpected_error(make_client):
+    """AppError가 아닌 예외는 전역 핸들러가 잡아 내부 정보 없이 500을 반환해야 함."""
+    test_client, fake = make_client(raise_server_exceptions=False)
+
+    def boom(contents, system_instruction):
+        raise RuntimeError("내부 디버그 정보 - 절대 노출 금지")
+
+    fake.generate = boom
+
+    res = test_client.post("/translate", json=payload())
+
+    assert res.status_code == 500
+    assert "디버그" not in res.text
+    assert error_message(res) == "서버 오류가 발생했습니다."
+    assert error_code(res) == "INTERNAL_ERROR"
 
 
 # ---------- 스키마 검증 (FastAPI/Pydantic 기본 422) ----------
@@ -123,3 +145,10 @@ def test_translate_requires_all_fields(client, missing):
 
 def test_translate_rejects_wrong_type(client):
     assert client.post("/translate", json=payload(text=123)).status_code == 422
+
+
+def test_translate_rejects_text_over_max_length(client):
+    res = client.post("/translate", json=payload(text="가" * 2001))
+
+    assert res.status_code == 422
+    assert error_code(res) == "VALIDATION_ERROR"

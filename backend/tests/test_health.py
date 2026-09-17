@@ -1,13 +1,14 @@
 """GET /health — API 키 설정 여부 확인용 헬스체크."""
 
 import api.routes as routes
+from conftest import success_data
 
 
 def test_health_returns_ok(client):
     res = client.get("/health")
 
     assert res.status_code == 200
-    assert res.json()["status"] == "ok"
+    assert success_data(res)["status"] == "ok"
 
 
 def test_health_reports_api_key_configured(client, monkeypatch):
@@ -19,10 +20,10 @@ def test_health_reports_api_key_configured(client, monkeypatch):
     """
     monkeypatch.setattr(routes.gemini_client, "_client", object())
 
-    assert client.get("/health").json()["api_key_configured"] is True
+    assert success_data(client.get("/health"))["api_key_configured"] is True
 
 
 def test_health_reports_api_key_missing(client, monkeypatch):
     monkeypatch.setattr(routes.gemini_client, "_client", None)
 
-    assert client.get("/health").json()["api_key_configured"] is False
+    assert success_data(client.get("/health"))["api_key_configured"] is False

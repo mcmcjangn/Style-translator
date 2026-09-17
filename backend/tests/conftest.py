@@ -16,13 +16,26 @@ DEFAULT_REPLY = "번역된 결과입니다."
 def error_message(response) -> str:
     """에러 응답에서 사람이 읽을 메시지를 꺼냅니다.
 
-    현재 백엔드는 FastAPI 기본 형식 {"detail": "..."}을 사용합니다.
-    공통 예외처리 리팩토링(1.5단계)으로 형식이 바뀌면 이 함수만 수정하면
-    전체 테스트가 따라옵니다. 테스트 본문에서 response.json()["detail"]을
-    직접 읽지 마세요.
+    백엔드는 {"success": false, "error": {"code", "message"}} 공통 envelope을 씁니다.
+    형식이 또 바뀌면 이 함수만 수정하면 전체 테스트가 따라옵니다. 테스트 본문에서
+    response.json()["error"]를 직접 읽지 마세요.
+    """
+    return response.json()["error"]["message"]
+
+
+def error_code(response) -> str:
+    """에러 응답에서 머신 리더블 코드를 꺼냅니다 (error_message()와 동일한 용도)."""
+    return response.json()["error"]["code"]
+
+
+def success_data(response):
+    """성공 응답에서 실제 데이터를 꺼냅니다 ({"success": true, "data": ...} 언랩).
+
+    error_message()/error_code()와 같은 이유 — envelope이 또 바뀌면 여기만 고치면 됩니다.
     """
     body = response.json()
-    return body["detail"]
+    assert body["success"] is True
+    return body["data"]
 
 
 class FakeGeminiClient:
@@ -61,12 +74,16 @@ def make_client():
     """원하는 상태의 가짜 클라이언트로 TestClient를 만드는 팩토리.
 
     사용: test_client, fake = make_client(configured=False)
+
+    raise_server_exceptions=False를 넘기면 전역 Exception 핸들러가 만든 응답을 그대로
+    돌려받습니다 (기본 TestClient는 핸들러가 처리한 뒤에도 원본 예외를 다시 raise함 —
+    프로덕션에서는 응답이 이미 전송된 뒤라 무해하지만 테스트에선 검증을 방해함).
     """
 
-    def _make(**kwargs):
+    def _make(*, raise_server_exceptions: bool = True, **kwargs):
         fake = FakeGeminiClient(**kwargs)
         app.dependency_overrides[get_translate_service] = lambda: TranslateService(fake)
-        return TestClient(app), fake
+        return TestClient(app, raise_server_exceptions=raise_server_exceptions), fake
 
     yield _make
     app.dependency_overrides.clear()
