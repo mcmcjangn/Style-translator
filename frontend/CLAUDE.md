@@ -37,9 +37,13 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000'
 
 요청 바디는 snake_case로 변환해서 보냅니다 — `{text, target_lang, style}`.
 
-**에러 처리:** `client.js`가 실패 응답에서 `data.detail`을 읽어 `Error` 메시지로 던지고,
+**응답 envelope:** 백엔드는 모든 응답을 `{success, data}` / `{success, error: {code, message}}`로
+감싸 보냅니다. `client.js`의 `unwrap()`이 껍데기를 벗겨내므로 **이 파일 밖에서는 응답 형식을
+몰라도 됩니다** — 컴포넌트와 훅은 `data` 알맹이만 받습니다.
+
+**에러 처리:** `unwrap()`이 `error.message`를 `Error`로 던지고 (`error.code`도 함께 붙임),
 `useTranslate`가 그것을 `error` 상태에 담아 `App.jsx`가 표시합니다.
-→ 백엔드 에러 응답 형식이 바뀌면 `client.js`의 `data.detail` 한 줄을 반드시 같이 수정해야 합니다.
+→ 백엔드 응답 형식이 바뀌면 `client.js`의 `unwrap()` 한 함수만 수정하면 됩니다.
 
 ## Testing
 
