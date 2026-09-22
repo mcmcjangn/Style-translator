@@ -21,23 +21,33 @@ pytest                                    # 테스트 (pytest.ini: pythonpath=.,
 | `services/translate.py` | `TranslateService` — 검증, 프롬프트 조립, 클라이언트 호출 |
 | `clients/gemini.py` | `GeminiClient` — Gemini SDK 래퍼. 모듈 로드 시 싱글톤 `gemini_client` 생성 |
 | `core/config.py` | `Settings` — 환경변수, 모델명, CORS 허용 오리진 |
-| `models/schemas.py` | `TranslateRequest` / `TranslateResponse` |
+| `core/envelope.py` | `SuccessResponse[T]` — 성공 응답 공통 껍데기 |
+| `core/exceptions.py` | `AppError` 및 하위 예외 — FastAPI를 모르는 순수 도메인 예외 |
+| `core/error_handlers.py` | `AppError` / 검증 실패 / 미처리 예외 → HTTP 변환. `register_exception_handlers(app)` |
+| `models/schemas.py` | `TranslateRequest` / `TranslateResponse` / `HealthData` |
 | `styles.py` | `STYLES` 딕셔너리 — 스타일 단일 정의처 |
 
 ## Endpoints
+
+성공 응답은 모두 `{"success": true, "data": ...}`로 감싸집니다 (`SuccessResponse[T]`).
+아래 표기는 `data` 안쪽입니다.
 
 - `GET /health` → `{"status": "ok", "api_key_configured": bool}`
 - `GET /styles` → `{key: label}` (`STYLES`에서 생성)
 - `POST /translate` — `{text, target_lang, style}` → `{translated, style}`
 
-에러 (현재 `services/translate.py`에서 `HTTPException` 직접 raise):
+에러는 `services/translate.py`가 `AppError` 하위 예외를 raise하고
+`core/error_handlers.py`가 `{"success": false, "error": {"code", "message"}}`로 변환합니다.
+서비스 레이어는 FastAPI에 의존하지 않습니다.
 
-| 조건 | 코드 | detail |
+| 조건 | status | code |
 |---|---|---|
-| API 키 미설정 | 500 | `GEMINI_API_KEY가 설정되지 않았습니다...` |
-| 알 수 없는 스타일 | 400 | `알 수 없는 스타일: {style}` |
-| 빈 텍스트 | 400 | `번역할 텍스트가 비어 있습니다.` |
-| Gemini 호출 실패 | 502 | `번역 엔진 호출 실패: {exc}` (`api/routes.py`에서 처리) |
+| API 키 미설정 | 500 | `API_KEY_NOT_CONFIGURED` |
+| 알 수 없는 스타일 | 400 | `UNKNOWN_STYLE` |
+| 빈 텍스트 | 400 | `EMPTY_TEXT` |
+| Gemini 호출 실패 | 502 | `TRANSLATION_ENGINE_ERROR` |
+| 요청 스키마 검증 실패 | 422 | `VALIDATION_ERROR` (`RequestValidationError` 핸들러) |
+| 그 외 미처리 예외 | 500 | `INTERNAL_ERROR` (원문은 로그로만, 클라이언트엔 비노출) |
 
 ## Gemini 호출
 
@@ -64,7 +74,10 @@ pytest                                    # 테스트 (pytest.ini: pythonpath=.,
 `tests/conftest.py`에 `FakeGeminiClient`와 `client` fixture가 있습니다.
 실제 Gemini API를 호출하지 않으며, `app.dependency_overrides[get_translate_service]`로 주입합니다.
 
-- **에러 응답 형식을 단정할 때는 `conftest.py`의 `error_message()` 헬퍼를 쓰세요.**
-  공통 예외처리 리팩토링 시 그 함수 한 곳만 고치면 전체 테스트가 따라옵니다.
+- **응답 형식을 단정할 때는 `conftest.py`의 헬퍼를 쓰세요** — `success_data()`,
+  `error_message()`, `error_code()`. envelope이 또 바뀌면 그 세 함수만 고치면 전체 테스트가
+  따라옵니다. 테스트 본문에서 `response.json()["data"]`를 직접 읽지 마세요.
+- 전역 `Exception` 핸들러가 만든 응답을 검증하려면 `make_client(raise_server_exceptions=False)`를
+  쓰세요. 기본 `TestClient`는 핸들러 처리 후에도 원본 예외를 다시 raise합니다.
 - `GET /health`는 DI를 거치지 않고 전역 `gemini_client`를 직접 읽습니다 (`api/routes.py`).
   따라서 `dependency_overrides`가 통하지 않고 `monkeypatch`가 필요합니다.
