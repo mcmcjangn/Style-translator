@@ -4,10 +4,12 @@
 응답 형식이 바뀌면 그 헬퍼만 고치면 됩니다.
 """
 
+import json
+
 import pytest
 from google.genai import errors as genai_errors
 
-from conftest import DEFAULT_REPLY, error_code, error_message, success_data
+from conftest import DEFAULT_CANDIDATES, error_code, error_message, success_data
 from styles import STYLES
 
 
@@ -20,11 +22,11 @@ def payload(**overrides) -> dict:
 # ---------- 정상 케이스 ----------
 
 
-def test_translate_returns_translated_text(client):
+def test_translate_returns_candidates(client):
     res = client.post("/translate", json=payload())
 
     assert res.status_code == 200
-    assert success_data(res) == {"translated": DEFAULT_REPLY, "style": "general"}
+    assert success_data(res) == {"candidates": DEFAULT_CANDIDATES, "style": "general"}
 
 
 @pytest.mark.parametrize("style", sorted(STYLES))
@@ -37,10 +39,10 @@ def test_translate_accepts_every_defined_style(client, style):
 
 
 def test_translate_strips_whitespace_from_model_output(make_client):
-    test_client, _ = make_client(reply="  앞뒤 공백 있는 응답  \n")
+    test_client, _ = make_client(reply=json.dumps(["  후보 1  \n", "후보 2 ", " 후보 3"]))
 
     res = test_client.post("/translate", json=payload())
-    assert success_data(res)["translated"] == "앞뒤 공백 있는 응답"
+    assert success_data(res)["candidates"] == ["후보 1", "후보 2", "후보 3"]
 
 
 def test_translate_passes_text_and_style_prompt_to_client(client, fake_client):
@@ -54,6 +56,7 @@ def test_translate_passes_text_and_style_prompt_to_client(client, fake_client):
     assert "영어" in prompt
     assert STYLES["sns"]["description"] in prompt
     assert STYLES["sns"]["examples"][0]["source"] in prompt
+    assert "후보 3개" in prompt
 
 
 # ---------- 에러 케이스 ----------
@@ -112,6 +115,26 @@ def test_translate_returns_502_when_gemini_fails(make_client):
 
     assert res.status_code == 502
     assert "번역 엔진" in error_message(res)
+    assert error_code(res) == "TRANSLATION_ENGINE_ERROR"
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "JSON이 아닌 응답",
+        json.dumps(["후보 1", "후보 2"]),
+        json.dumps(["후보 1", "후보 2", "후보 3", "후보 4"]),
+        json.dumps(["후보 1", "  ", "후보 3"]),
+        json.dumps({"candidates": ["후보 1", "후보 2", "후보 3"]}),
+    ],
+)
+def test_translate_returns_502_when_model_output_is_malformed(make_client, reply):
+    """모델이 약속한 형식(문자열 3개 배열)을 어기면 업스트림 오류(502)로 처리."""
+    test_client, _ = make_client(reply=reply)
+
+    res = test_client.post("/translate", json=payload())
+
+    assert res.status_code == 502
     assert error_code(res) == "TRANSLATION_ENGINE_ERROR"
 
 

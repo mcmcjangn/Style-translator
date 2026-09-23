@@ -8,7 +8,7 @@ class TranslateRequest(BaseModel):
 
 
 class TranslateResponse(BaseModel):
-    translated: str
+    candidates: list[str]
     style: str
 
 
