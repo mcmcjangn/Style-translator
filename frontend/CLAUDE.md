@@ -21,7 +21,7 @@ npm test         # vitest run
 |---|---|
 | `src/App.jsx` | 화면 전체. 마운트 시 `fetchStyles()`로 드롭다운 채움 (실패 시 `FALLBACK_STYLES`) |
 | `src/api/client.js` | `fetchStyles()`, `fetchTranslation()` — fetch 래퍼 |
-| `src/hooks/useTranslate.js` | `{result, loading, error, translate}` — 번역 호출 + 상태 관리 |
+| `src/hooks/useTranslate.js` | `{candidates, selected, setSelected, loading, error, translate}` — 번역 호출 + 후보 3개/선택 상태 관리 |
 | `src/App.css`, `src/index.css` | 스타일 |
 
 ## API 연동

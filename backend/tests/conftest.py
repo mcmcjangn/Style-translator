@@ -3,6 +3,8 @@
 실제 Gemini API는 호출하지 않습니다. FakeGeminiClient를 DI로 주입합니다.
 """
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -10,7 +12,8 @@ from api.routes import get_translate_service
 from main import app
 from services.translate import TranslateService
 
-DEFAULT_REPLY = "번역된 결과입니다."
+DEFAULT_CANDIDATES = ["번역 후보 1", "번역 후보 2", "번역 후보 3"]
+DEFAULT_REPLY = json.dumps(DEFAULT_CANDIDATES, ensure_ascii=False)
 
 
 def error_message(response) -> str:
