@@ -15,6 +15,18 @@ from styles import STYLES
 CANDIDATE_COUNT = 3
 
 
+def _is_valid_candidates(value) -> bool:
+    """약속된 형식(비어 있지 않은 문자열 CANDIDATE_COUNT개)인지 확인합니다.
+
+    모델 응답과 캐시에서 꺼낸 값에 같은 기준을 적용하기 위해 분리했습니다.
+    """
+    return (
+        isinstance(value, list)
+        and len(value) == CANDIDATE_COUNT
+        and all(isinstance(c, str) and c.strip() for c in value)
+    )
+
+
 class TranslateService:
     def __init__(self, client: GeminiClient, cache: TranslationCache | None = None):
         self.client = client
@@ -33,7 +45,9 @@ class TranslateService:
         # 검증을 통과한 요청만 캐시를 봅니다 — 잘못된 요청을 캐싱할 이유가 없습니다.
         cache_key = build_cache_key(text, target_lang, style)
         cached = self.cache.get(cache_key)
-        if cached is not None:
+        # 형식을 확인하고 씁니다 — KEY_PREFIX를 올리지 않은 채 저장 형식이 바뀌어도
+        # 옛 값이 그대로 나가지 않고 miss로 처리됩니다.
+        if _is_valid_candidates(cached):
             return cached
 
         style_def = STYLES[style]
@@ -59,11 +73,7 @@ class TranslateService:
             candidates = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise TranslationEngineError(message) from exc
-        if (
-            not isinstance(candidates, list)
-            or len(candidates) != CANDIDATE_COUNT
-            or not all(isinstance(c, str) and c.strip() for c in candidates)
-        ):
+        if not _is_valid_candidates(candidates):
             raise TranslationEngineError(message)
         return [c.strip() for c in candidates]
 

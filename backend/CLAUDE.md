@@ -65,7 +65,10 @@ structured output(`response_mime_type="application/json"`, `response_schema=list
 `POST /translate`는 같은 `(text, target_lang, style)` 조합이면 Gemini를 다시 부르지 않습니다.
 
 - key는 세 값을 JSON 배열로 직렬화한 뒤 sha256 (`build_cache_key()`). 버전 prefix `translate:v2`가
-  붙어 있으니 **저장하는 값의 형식을 바꾸면 `KEY_PREFIX`를 올리세요** — 과거 캐시가 자동으로 무시됩니다.
+  붙어 있으니 **저장하는 값의 형식을 바꾸면 `KEY_PREFIX`를 올리고 선언부 이력에 한 줄 추가하세요**
+  — 과거 캐시가 자동으로 무시됩니다.
+- 버전을 올리는 것을 잊어도 캐시에서 꺼낸 값은 `_is_valid_candidates()`로 형식을 검증합니다.
+  어긋나면 miss로 처리되고 새로 번역합니다 (모델 응답 검증과 같은 함수를 씁니다).
 - 값은 JSON으로 직렬화해 저장합니다. Redis가 문자열만 담기 때문이고, 덕분에 저장 값의 타입이
   바뀌어도 `RedisCache`는 그대로 둘 수 있습니다.
 - `TranslateService`는 `clients/cache.py`의 프로토콜에만 의존합니다. Redis를 직접 알지 못하므로

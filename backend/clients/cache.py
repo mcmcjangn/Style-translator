@@ -13,8 +13,14 @@ from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# 저장하는 값의 형식이 바뀌면 이 버전을 올리세요. 과거 캐시가 자동으로 무시됩니다
-# (지우지 않아도 key가 달라져 miss가 나고, 옛 항목은 TTL로 사라집니다).
+# 캐시에 저장하는 값의 형식이 바뀌면 이 버전을 올리고 아래 이력에 한 줄 추가하세요.
+# 과거 캐시는 key가 달라져 조회되지 않고, 남은 항목은 TTL로 사라집니다.
+#
+#   v1 — str        번역 결과 1개
+#   v2 — list[str]  서로 다른 번역 후보 3개 (#11)
+#
+# 현재 형식의 정의처는 models/schemas.py의 TranslateResponse입니다.
+# 버전을 올리는 것을 잊어도 services/translate.py가 형식을 검증해 옛 값을 무시합니다.
 KEY_PREFIX = "translate:v2"
 
 

@@ -106,6 +106,29 @@ def test_cache_hit_skips_gemini_entirely(client, fake_client, fake_cache):
     assert success_data(res)["candidates"] == cached
 
 
+@pytest.mark.parametrize(
+    "stale",
+    [
+        "문자열 하나",  # v1 시절 형식
+        ["후보 1", "후보 2"],  # 개수 부족
+        ["후보 1", "후보 2", "후보 3", "후보 4"],  # 개수 초과
+        ["후보 1", "  ", "후보 3"],  # 빈 문자열 포함
+        [1, 2, 3],  # 문자열 아님
+        {"candidates": ["후보 1", "후보 2", "후보 3"]},  # 리스트 아님
+    ],
+)
+def test_malformed_cached_value_is_ignored(client, fake_client, fake_cache, stale):
+    """KEY_PREFIX를 올리지 않은 채 저장 형식이 바뀌어도 옛 값이 그대로 나가면 안 됩니다."""
+    key = build_cache_key("이거 언제까지 가능해?", "한국어", "general")
+    fake_cache.store[key] = stale
+
+    res = client.post("/translate", json=payload())
+
+    assert res.status_code == 200
+    assert success_data(res)["candidates"] == DEFAULT_CANDIDATES
+    assert len(fake_client.calls) == 1
+
+
 # ---------- 캐시에 들어가면 안 되는 것 ----------
 
 
