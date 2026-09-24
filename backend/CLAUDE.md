@@ -64,7 +64,7 @@ structured output(`response_mime_type="application/json"`, `response_schema=list
 
 `POST /translate`는 같은 `(text, target_lang, style)` 조합이면 Gemini를 다시 부르지 않습니다.
 
-- key는 세 값을 JSON 배열로 직렬화한 뒤 sha256 (`build_cache_key()`). 버전 prefix `translate:v1`이
+- key는 세 값을 JSON 배열로 직렬화한 뒤 sha256 (`build_cache_key()`). 버전 prefix `translate:v2`가
   붙어 있으니 **저장하는 값의 형식을 바꾸면 `KEY_PREFIX`를 올리세요** — 과거 캐시가 자동으로 무시됩니다.
 - 값은 JSON으로 직렬화해 저장합니다. Redis가 문자열만 담기 때문이고, 덕분에 저장 값의 타입이
   바뀌어도 `RedisCache`는 그대로 둘 수 있습니다.
