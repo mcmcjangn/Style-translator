@@ -39,7 +39,7 @@ describe('fetchStyles', () => {
 
 describe('fetchTranslation', () => {
   it('target_lang으로 snake_case 변환해서 POST한다', async () => {
-    const spy = mockFetch(ok({ translated: '결과', style: 'sns' }))
+    const spy = mockFetch(ok({ candidates: ['결과1', '결과2', '결과3'], style: 'sns' }))
 
     await fetchTranslation({ text: '안녕', targetLang: '영어', style: 'sns' })
 
@@ -55,11 +55,12 @@ describe('fetchTranslation', () => {
   })
 
   it('성공 시 data 필드를 언랩해서 반환한다', async () => {
-    mockFetch(ok({ translated: '결과', style: 'general' }))
+    const data = { candidates: ['결과1', '결과2', '결과3'], style: 'general' }
+    mockFetch(ok(data))
 
     await expect(
       fetchTranslation({ text: '안녕', targetLang: '한국어', style: 'general' }),
-    ).resolves.toEqual({ translated: '결과', style: 'general' })
+    ).resolves.toEqual(data)
   })
 
   // 백엔드 공통 error envelope({ success: false, error: { code, message } })에 의존하는 테스트.

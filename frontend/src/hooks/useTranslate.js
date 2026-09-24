@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { fetchTranslation } from '../api/client'
 
 export function useTranslate() {
-  const [result, setResult] = useState('')
+  const [candidates, setCandidates] = useState([])
+  const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -13,10 +14,11 @@ export function useTranslate() {
     }
     setLoading(true)
     setError('')
-    setResult('')
+    setCandidates([])
+    setSelected(0)
     try {
       const data = await fetchTranslation({ text, targetLang, style })
-      setResult(data.translated)
+      setCandidates(data.candidates)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -24,5 +26,5 @@ export function useTranslate() {
     }
   }
 
-  return { result, loading, error, translate }
+  return { candidates, selected, setSelected, loading, error, translate }
 }

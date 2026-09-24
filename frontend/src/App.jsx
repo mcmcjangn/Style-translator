@@ -21,7 +21,7 @@ export default function App() {
   const [text, setText] = useState('')
   const [targetLang, setTargetLang] = useState('en')
   const [style, setStyle] = useState('general')
-  const { result, loading, error, translate } = useTranslate()
+  const { candidates, selected, setSelected, loading, error, translate } = useTranslate()
 
   useEffect(() => {
     fetchStyles().then(setStyles).catch(() => {})
@@ -74,10 +74,20 @@ export default function App() {
 
         {error && <p className="error" role="alert">{error}</p>}
 
-        {result && (
+        {candidates.length > 0 && (
           <div className="result">
-            <span className="result__label">결과 · {styles[style] ?? style}</span>
-            <p className="result__text">{result}</p>
+            <span className="result__label">결과 · {styles[style] ?? style} · 마음에 드는 번역을 고르세요</span>
+            {candidates.map((candidate, i) => (
+              <button
+                key={i}
+                type="button"
+                className="candidate"
+                aria-pressed={selected === i}
+                onClick={() => setSelected(i)}
+              >
+                <p className="result__text">{candidate}</p>
+              </button>
+            ))}
           </div>
         )}
       </main>

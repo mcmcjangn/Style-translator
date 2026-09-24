@@ -8,7 +8,7 @@ import pytest
 from google.genai import errors as genai_errors
 
 from clients.cache import KEY_PREFIX, NullCache, RedisCache, build_cache, build_cache_key
-from conftest import DEFAULT_REPLY, FakeGeminiClient, error_code, success_data
+from conftest import DEFAULT_CANDIDATES, FakeGeminiClient, error_code, success_data
 from core.config import settings
 from services.translate import TranslateService
 
@@ -69,7 +69,7 @@ def test_cached_response_matches_first_response(client):
     client.post("/translate", json=payload())
     res = client.post("/translate", json=payload())
 
-    assert success_data(res) == {"translated": DEFAULT_REPLY, "style": "general"}
+    assert success_data(res) == {"candidates": DEFAULT_CANDIDATES, "style": "general"}
 
 
 @pytest.mark.parametrize(
@@ -91,18 +91,19 @@ def test_result_is_stored_in_cache(client, fake_cache):
     client.post("/translate", json=payload())
 
     key = build_cache_key("이거 언제까지 가능해?", "한국어", "general")
-    assert fake_cache.store[key] == DEFAULT_REPLY
+    assert fake_cache.store[key] == DEFAULT_CANDIDATES
 
 
 def test_cache_hit_skips_gemini_entirely(client, fake_client, fake_cache):
     """캐시에 미리 값을 넣어두면 Gemini를 한 번도 부르지 않아야 합니다."""
     key = build_cache_key("이거 언제까지 가능해?", "한국어", "general")
-    fake_cache.store[key] = "미리 캐시된 번역"
+    cached = ["미리 캐시된 후보 1", "미리 캐시된 후보 2", "미리 캐시된 후보 3"]
+    fake_cache.store[key] = cached
 
     res = client.post("/translate", json=payload())
 
     assert fake_client.calls == []
-    assert success_data(res)["translated"] == "미리 캐시된 번역"
+    assert success_data(res)["candidates"] == cached
 
 
 # ---------- 캐시에 들어가면 안 되는 것 ----------
@@ -139,8 +140,8 @@ def test_service_works_without_cache():
     fake = FakeGeminiClient()
     service = TranslateService(fake)
 
-    assert service.translate("안녕", "영어", "general") == DEFAULT_REPLY
-    assert service.translate("안녕", "영어", "general") == DEFAULT_REPLY
+    assert service.translate("안녕", "영어", "general") == DEFAULT_CANDIDATES
+    assert service.translate("안녕", "영어", "general") == DEFAULT_CANDIDATES
     assert len(fake.calls) == 2
 
 
@@ -184,7 +185,7 @@ def test_redis_cache_roundtrip():
 
 
 def test_redis_cache_stores_json_so_value_type_survives():
-    """값이 문자열이 아니어도 형식이 보존되어야 합니다 (후보 리스트 등 향후 변경 대비)."""
+    """리스트를 넣으면 리스트로 돌아와야 합니다 — 캐시에 담는 값이 후보 리스트이므로."""
     cache = RedisCache(FakeRedis(), ttl_seconds=60)
     cache.set("key", ["후보1", "후보2", "후보3"])
 
@@ -227,7 +228,7 @@ def test_translate_still_works_when_redis_is_down(fake_client):
     """엔드-투-엔드 — Redis 장애 시 캐시만 건너뛰고 번역은 정상 동작."""
     service = TranslateService(fake_client, RedisCache(BrokenRedis(), ttl_seconds=60))
 
-    assert service.translate("안녕", "영어", "general") == DEFAULT_REPLY
+    assert service.translate("안녕", "영어", "general") == DEFAULT_CANDIDATES
     assert len(fake_client.calls) == 1
 
 

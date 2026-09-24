@@ -26,6 +26,6 @@ def list_styles(service: TranslateService = Depends(get_translate_service)):
 
 @router.post("/translate", response_model=SuccessResponse[TranslateResponse])
 def translate(req: TranslateRequest, service: TranslateService = Depends(get_translate_service)):
-    translated = service.translate(req.text, req.target_lang, req.style)
-    data = TranslateResponse(translated=translated, style=req.style)
+    candidates = service.translate(req.text, req.target_lang, req.style)
+    data = TranslateResponse(candidates=candidates, style=req.style)
     return SuccessResponse(data=data)

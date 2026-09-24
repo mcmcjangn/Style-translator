@@ -209,6 +209,28 @@ body {
   color: var(--ink);
 }
 
+.candidate {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 14px;
+  text-align: left;
+  font: inherit;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.candidate:hover {
+  border-color: var(--ink-soft);
+}
+
+.candidate[aria-pressed='true'] {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 1px var(--indigo);
+}
+
 .page__footer {
   margin-top: 32px;
   font-family: var(--font-mono);

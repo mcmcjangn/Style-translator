@@ -19,7 +19,9 @@ class GeminiClient:
             config=genai_types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 temperature=0.3,
-                max_output_tokens=1024,
+                max_output_tokens=4096,
+                response_mime_type="application/json",
+                response_schema=list[str],
             ),
         )
         return response.text or ""

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # 저장하는 값의 형식이 바뀌면 이 버전을 올리세요. 과거 캐시가 자동으로 무시됩니다
 # (지우지 않아도 key가 달라져 miss가 나고, 옛 항목은 TTL로 사라집니다).
-KEY_PREFIX = "translate:v1"
+KEY_PREFIX = "translate:v2"
 
 
 def build_cache_key(text: str, target_lang: str, style: str) -> str:
